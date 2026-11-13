@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NoN Inventory</title>
+
+    <!-- Collegamento alla PWA e Icone -->
+    <link rel="manifest" href="manifest.json?v=2">
+    <meta name="theme-color" content="#1b5e20">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NoN Inv">
+    <link rel="apple-touch-icon" href="icon-192.png?v=2">
+
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --primary: #ffffff;
+            --accent: #ff9900;
+            --edit-btn: #0288d1;
+            --text: #e0e0e0;
+            --border: #333333;
+            --input-bg: #2d2d2d;
+            --btn-count-bg: #ff9900;
+            --btn-count-text: #121212;
+            --btn-disabled-bg: #252525;
+            --btn-disabled-text: #666666;
+            
+            --p2-color: #2e7d32;
+            --p3-color: #f57f17;
+            --p4-color: #d32f2f;
+        }
+
+        body.light-theme {
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --primary: #232f3e;
+            --accent: #ff9900;
+            --edit-btn: #0288d1;
+            --text: #111111;
+            --border: #cccccc;
+            --input-bg: #f0f2f5;
+            --btn-count-bg: #232f3e;
+            --btn-count-text: #ffffff;
+            --btn-disabled-bg: #e0e0e0;
+            --btn-disabled-text: #888888;
+            
+            --p2-color: #4caf50;
+            --p3-color: #fbc02d;
+            --p4-color: #e53935;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 12px;
+            box-sizing: border-box;
+            transition: background-color 0.2s, color 0.2s;
+            user-select: none;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            color: var(--primary);
+            margin: 0;
+        }
+
+        .theme-toggle {
+            background-color: var(--card-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 8px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .section {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        }
+
+        label {
+            font-weight: bold;
+            font-size: 1rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        /* 1. SELEZIONE PIANO */
+        .floor-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .btn-floor {
+            padding: 14px 0;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            color: #ffffff;
+            opacity: 0.45;
+            transition: opacity 0.2s, transform 0.1s;
+            text-align: center;
+        }
+
+        .btn-floor.btn-p2 { background-color: var(--p2-color); }
+        .btn-floor.btn-p3 { background-color: var(--p3-color); color: #000; }
+        .btn-floor.btn-p4 { background-color: var(--p4-color); }
+
+        .btn-floor.active {
+            opacity: 1;
+            border-color: #ffffff;
+            transform: scale(1.02);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+
+        /* 2. RUOTA VERTICALE BOX */
+        .wheel-vertical-wrapper {
+            position: relative;
+            height: 192px;
+            overflow: hidden;
+            border-radius: 10px;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            margin-bottom: 14px;
+        }
+
+        .wheel-vertical-highlight {
+            position: absolute;
+            top: 64px;
+            left: 8px;
+            right: 8px;
+            height: 64px;
+            border-top: 2px solid var(--accent);
+            border-bottom: 2px solid var(--accent);
+            background: rgba(255, 153, 0, 0.08);
+            border-radius: 6px;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .wheel-vertical-list {
+            height: 100%;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            padding: 64px 0;
+            box-sizing: border-box;
+            scrollbar-width: none;
+        }
+
+        .wheel-vertical-list::-webkit-scrollbar {
+            display: none;
+        }
+
+        .wheel-v-item {
+            height: 64px;
+            scroll-snap-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            box-sizing: border-box;
+            cursor: pointer;
+            transition: transform 0.18s ease, opacity 0.18s ease, filter 0.18s ease;
+            opacity: 0.35;
+            filter: blur(1.2px);
+            transform: scale(0.88);
+        }
+
+        .wheel-v-item.active {
+            opacity: 1;
+            filter: blur(0);
+            transform: scale(1.03);
+        }
+
+        .wheel-v-name {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--primary);
+        }
+
+        .wheel-v-item.active .wheel-v-name {
+            color: var(--accent);
+        }
+
+        .wheel-v-badge {
+            font-size: 1.25rem;
+            font-weight: 900;
+            min-width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .wheel-v-badge.has-qty {
+            background: var(--accent);
+            color: #121212;
+            border-color: var(--accent);
+        }
+
+        /* CONTROLLI QUANTITÀ SOTTO LA RUOTA */
+        .active-counter-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--input-bg);
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .btn-count {
+            background-color: var(--btn-count-bg);
+            color: var(--btn-count-text);
+            border: none;
+            width: 64px;
+            height: 52px;
+            border-radius: 8px;
+            font-size: 1.7rem;
+            font-weight: 900;
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: background-color 0.15s, color 0.15s;
+        }
+
+        .btn-count.is-zero {
+            background-color: var(--btn-disabled-bg);
+            color: var(--btn-disabled-text);
+            font-weight: 900;
+            border: 1px solid var(--border);
+            cursor: not-allowed;
+        }
+
+        .active-qty-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .active-qty-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            opacity: 0.75;
+            font-weight: bold;
+        }
+
+        .active-qty-number {
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: var(--accent);
+            line-height: 1.1;
+        }
+
+        .selected-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+            min-height: 10px;
+        }
+
+        .pill-item {
+            background: rgba(255, 153, 0, 0.15);
+            border: 1px solid var(--accent);
+            color: var(--text);
+            padding: 4px 10px;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* 3. RUOTA ORIZZONTALE WALL */
+        .wheel-horizontal-wrapper {
+            position: relative;
+            height: 76px;
+            overflow: hidden;
+            border-radius: 10px;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+        }
+
+        .wheel-horizontal-highlight {
+            position: absolute;
+            top: 6px;
+            bottom: 6px;
+            left: 50%;
+            width: 96px;
+            transform: translateX(-50%);
+            border-left: 2px solid var(--accent);
+            border-right: 2px solid var(--accent);
+            background: rgba(255, 153, 0, 0.1);
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .wheel-horizontal-list {
+            display: flex;
+            align-items: center;
+            height: 100%;
+            overflow-x: scroll;
+            scroll-snap-type: x mandatory;
+            padding: 0 calc(50% - 48px);
+            box-sizing: border-box;
+            scrollbar-width: none;
+        }
+
+        .wheel-horizontal-list::-webkit-scrollbar {
+            display: none;
+        }
+
+        .wheel-h-item {
+            flex: 0 0 96px;
+            height: 100%;
+            scroll-snap-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform 0.18s ease, opacity 0.18s ease, filter 0.18s ease;
+            opacity: 0.35;
+            filter: blur(1.2px);
+            transform: scale(0.85);
+            color: var(--text);
+        }
+
+        .wheel-h-item.active {
+            opacity: 1;
+            filter: blur(0);
+            transform: scale(1.12);
+            color: var(--accent);
+            font-weight: 900;
+        }
+
+        /* PULSANTI CONFERMA */
+        .action-btn {
+            width: 100%;
+            background-color: var(--accent);
+            color: #121212;
+            border: none;
+            padding: 14px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 6px;
+            touch-action: manipulation;
+        }
+
+        .action-btn.edit-mode {
+            background-color: var(--edit-btn);
+            color: #ffffff;
+        }
+
+        .btn-cancel {
+            width: 100%;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 6px;
+        }
+
+        /* 4. TABELLA REGISTRI */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 1rem;
+        }
+
+        th, td {
+            border: 1px solid var(--border);
+            padding: 14px 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--input-bg);
+            font-size: 1.05rem;
+        }
+
+        .floor-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 900;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .badge-p2 { background-color: var(--p2-color); color: #ffffff; }
+        .badge-p3 { background-color: var(--p3-color); color: #000000; }
+        .badge-p4 { background-color: var(--p4-color); color: #ffffff; }
+
+        .cell-wall {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--accent);
+        }
+
+        .cell-detail {
+            font-size: 1rem;
+            line-height: 1.4;
+        }
+
+        .btn-action-cell {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            min-width: 110px;
+        }
+
+        .btn-edit {
+            background-color: var(--edit-btn);
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .btn-delete {
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        /* FINESTRA MODALE PERSONALIZZATA */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 22px;
+            width: 85%;
+            max-width: 340px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 900;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .modal-text {
+            font-size: 1rem;
+            color: var(--text);
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .modal-btn-no {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .modal-btn-yes {
+            background-color: #d9534f;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>NoN Inventory</h1>
+        <button class="theme-toggle" id="themeBtn" onclick="toggleTema()">🌙 Scuro</button>
+    </div>
+
+    <!-- 1. SELEZIONE PIANO -->
+    <div class="section">
+        <label>1. Piano</label>
+        <div class="floor-selector">
+            <button class="btn-floor btn-p2 active" onclick="selezionaPiano('P2')">P2</button>
+            <button class="btn-floor btn-p3" onclick="selezionaPiano('P3')">P3</button>
+            <button class="btn-floor btn-p4" onclick="selezionaPiano('P4')">P4</button>
+        </div>
+    </div>
+
+    <!-- 2. QUANTITÀ SCATOLE E MATERIALI (RUOTA VERTICALE) -->
+    <div class="section">
+        <label>2. Scorri Scatole e Materiali</label>
+        
+        <div class="wheel-vertical-wrapper">
+            <div class="wheel-vertical-highlight"></div>
+            <div class="wheel-vertical-list" id="boxWheelList">
+                <!-- Popolato via JS -->
+            </div>
+        </div>
+
+        <div class="active-counter-box">
+            <button class="btn-count is-zero" id="btnMinusActive" onclick="modificaConteggioAttivo(-1)">-</button>
+            <div class="active-qty-display">
+                <span class="active-qty-label" id="activeBoxLabel">A1</span>
+                <span class="active-qty-number" id="activeBoxQty">0</span>
+            </div>
+            <button class="btn-count" id="btnPlusActive" onclick="modificaConteggioAttivo(1)">+</button>
+        </div>
+
+        <div class="selected-pills" id="selectedPills"></div>
+    </div>
+
+    <!-- 3. UBICAZIONE WALL (RUOTA ORIZZONTALE) & SALVATAGGIO -->
+    <div class="section">
+        <label>3. Ubicazione Wall & Conferma</label>
+        
+        <div class="wheel-horizontal-wrapper">
+            <div class="wheel-horizontal-highlight"></div>
+            <div class="wheel-horizontal-list" id="wallWheelList">
+                <!-- Popolato via JS -->
+            </div>
+        </div>
+
+        <button class="action-btn" id="btnSalva" onclick="salvaPallet()">Salva Pallet in Inventario</button>
+        <button class="btn-cancel" id="btnAnnulla" style="display: none;" onclick="annullaModifica()">Annulla Modifica</button>
+    </div>
+
+    <!-- 4. TABELLA REGISTRI -->
+    <div class="section">
+        <label>Pallet Registrati (<span id="totalPallets">0</span>)</label>
+        <div style="overflow-x:auto;">
+            <table id="inventoryTable">
+                <thead>
+                    <tr>
+                        <th>Piano</th>
+                        <th>Wall</th>
+                        <th>Dettaglio</th>
+                        <th style="text-align: center;">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryBody">
+                </tbody>
+            </table>
+        </div>
+
+        <button class="action-btn" style="background-color: #6c757d; color: white; margin-top: 15px;" onclick="chiediSvuotaTutto()">Resetta Inventario</button>
+    </div>
+
+    <!-- FINESTRA MODALE PERSONALIZZATA -->
+    <div class="modal-overlay" id="customModal">
+        <div class="modal-card">
+            <div class="modal-title">Vuoi confermare?</div>
+            <div class="modal-text" id="modalMessage">Sei sicuro di voler procedere con questa operazione?</div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-no" onclick="chiudiModale(false)">Annulla</button>
+                <button class="modal-btn modal-btn-yes" id="modalConfirmBtn" onclick="chiudiModale(true)">Conferma</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const listaBoxPiatta = [
+            'A1', 'A2', 
+            'M1', 'M2', 'M3', 'M4', 
+            'BP2', 'BP4', 'PM2', 'PM3', 
+            'F0a', 'F1', 'F2', 'F3', 'F4', 'F6', 'F7', 'F9', 'F11', 'F13', 'F16', 'F17', 'F18', 
+            'Tape', 'Carta', 'Sp00', 'UNI'
+        ];
+
+        const struttureWall = [
+            '1', '2', '2+',
+            '3', '4', '4+',
+            '5', '6', '6+',
+            '7', '8', '8+',
+            '9', '10', '10+',
+            '11', '12'
+        ];
+
+        let pianoSelezionato = 'P2';
+        let boxAttivaIndex = 0;
+        let wallAttivoIndex = 0;
+        let conteggiCorrenti = {};
+        let inventario = JSON.parse(localStorage.getItem('non_inventory')) || [];
+        let editIndex = null;
+        let modalCallback = null;
+
+        function selezionaPiano(piano) {
+            pianoSelezionato = piano;
+            document.querySelectorAll('.btn-floor').forEach(btn => btn.classList.remove('active'));
+            if (piano === 'P2') document.querySelector('.btn-p2').classList.add('active');
+            if (piano === 'P3') document.querySelector('.btn-p3').classList.add('active');
+            if (piano === 'P4') document.querySelector('.btn-p4').classList.add('active');
+        }
+
+        /* --- GESTIONE RUOTA VERTICALE BOX --- */
+        function inizializzaRuotaBox() {
+            const list = document.getElementById('boxWheelList');
+            list.innerHTML = '';
+            conteggiCorrenti = {};
+
+            listaBoxPiatta.forEach((boxName, idx) => {
+                conteggiCorrenti[boxName] = 0;
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `wheel-v-item ${idx === 0 ? 'active' : ''}`;
+                itemDiv.id = `wheel-box-${idx}`;
+                itemDiv.innerHTML = `
+                    <span class="wheel-v-name">${boxName}</span>
+                    <div class="wheel-v-badge" id="badge-box-${boxName}">0</div>
+                `;
+                itemDiv.onclick = () => {
+                    list.scrollTo({ top: idx * 64, behavior: 'smooth' });
+                };
+                list.appendChild(itemDiv);
+            });
+
+            list.addEventListener('scroll', () => {
+                const index = Math.round(list.scrollTop / 64);
+                const clampedIndex = Math.max(0, Math.min(listaBoxPiatta.length - 1, index));
+                if (clampedIndex !== boxAttivaIndex) {
+                    boxAttivaIndex = clampedIndex;
+                    aggiornaStatoRuotaBox();
+                }
+            });
+
+            boxAttivaIndex = 0;
+            list.scrollTop = 0;
+            aggiornaStatoRuotaBox();
+            aggiornaPills();
+        }
+
+        function aggiornaStatoRuotaBox() {
+            document.querySelectorAll('.wheel-v-item').forEach((el, idx) => {
+                el.classList.toggle('active', idx === boxAttivaIndex);
+            });
+
+            const boxCorrente = listaBoxPiatta[boxAttivaIndex];
+            const qty = conteggiCorrenti[boxCorrente] || 0;
+
+            document.getElementById('activeBoxLabel').innerText = boxCorrente;
+            document.getElementById('activeBoxQty').innerText = qty;
+
+            const btnMinus = document.getElementById('btnMinusActive');
+            if (qty <= 0) {
+                btnMinus.classList.add('is-zero');
+            } else {
+                btnMinus.classList.remove('is-zero');
+            }
+        }
+
+        function modificaConteggioAttivo(delta) {
+            const boxCorrente = listaBoxPiatta[boxAttivaIndex];
+            const nuovoValore = (conteggiCorrenti[boxCorrente] || 0) + delta;
+
+            if (nuovoValore >= 0) {
+                conteggiCorrenti[boxCorrente] = nuovoValore;
+                
+                const badge = document.getElementById(`badge-box-${boxCorrente}`);
+                if (badge) {
+                    badge.innerText = nuovoValore;
+                    badge.classList.toggle('has-qty', nuovoValore > 0);
+                }
+
+                aggiornaStatoRuotaBox();
+                aggiornaPills();
+            }
+        }
+
+        function aggiornaPills() {
+            const container = document.getElementById('selectedPills');
+            container.innerHTML = '';
+
+            listaBoxPiatta.forEach((boxName, idx) => {
+                const qty = conteggiCorrenti[boxName] || 0;
+                if (qty > 0) {
+                    const pill = document.createElement('span');
+                    pill.className = 'pill-item';
+                    pill.innerText = `${boxName}: ${qty}`;
+                    pill.onclick = () => {
+                        document.getElementById('boxWheelList').scrollTo({ top: idx * 64, behavior: 'smooth' });
+                    };
+                    container.appendChild(pill);
+                }
+            });
+        }
+
+        /* --- GESTIONE RUOTA ORIZZONTALE WALL --- */
+        function inizializzaRuotaWall() {
+            const list = document.getElementById('wallWheelList');
+            list.innerHTML = '';
+
+            struttureWall.forEach((wall, idx) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `wheel-h-item ${idx === 0 ? 'active' : ''}`;
+                itemDiv.innerText = wall;
+                itemDiv.onclick = () => {
+                    list.scrollTo({ left: idx * 96, behavior: 'smooth' });
+                };
+                list.appendChild(itemDiv);
+            });
+
+            list.addEventListener('scroll', () => {
+                const index = Math.round(list.scrollLeft / 96);
+                const clampedIndex = Math.max(0, Math.min(struttureWall.length - 1, index));
+                if (clampedIndex !== wallAttivoIndex) {
+                    wallAttivoIndex = clampedIndex;
+                    aggiornaStatoRuotaWall();
+                }
+            });
+
+            wallAttivoIndex = 0;
+            list.scrollLeft = 0;
+            aggiornaStatoRuotaWall();
+        }
+
+        function aggiornaStatoRuotaWall() {
+            document.querySelectorAll('.wheel-h-item').forEach((el, idx) => {
+                el.classList.toggle('active', idx === wallAttivoIndex);
+            });
+        }
+
+        /* --- GESTIONE MODALE PERSONALIZZATA --- */
+        function mostraModale(testo, callback) {
+            document.getElementById('modalMessage').innerText = testo;
+            modalCallback = callback;
+            document.getElementById('customModal').classList.add('active');
+        }
+
+        function chiudiModale(confermato) {
+            document.getElementById('customModal').classList.remove('active');
+            if (confermato && modalCallback) {
+                modalCallback();
+            }
+            modalCallback = null;
+        }
+
+        /* --- SALVATAGGIO & MODIFICA --- */
+        function salvaPallet() {
+            let dettaglio = {};
+            let haElementi = false;
+            for (let tipo in conteggiCorrenti) {
+                if (conteggiCorrenti[tipo] > 0) {
+                    dettaglio[tipo] = conteggiCorrenti[tipo];
+                    haElementi = true;
+                }
+            }
+
+            if (!haElementi) {
+                alert('Inserisci almeno una scatola o un materiale nel pallet.');
+                return;
+            }
+
+            const wallSelezionato = struttureWall[wallAttivoIndex];
+
+            const palletData = {
+                piano: pianoSelezionato,
+                wall: wallSelezionato,
+                dettaglio: dettaglio,
+                data: new Date().toLocaleString('it-IT')
+            };
+
+            if (editIndex !== null) {
+                inventario[editIndex] = palletData;
+                annullaModifica();
+            } else {
+                inventario.push(palletData);
+                resetConteggiForm();
+            }
+
+            localStorage.setItem('non_inventory', JSON.stringify(inventario));
+            aggiornaTabella();
+        }
+
+        function resetConteggiForm() {
+            listaBoxPiatta.forEach(boxName => {
+                conteggiCorrenti[boxName] = 0;
+                const badge = document.getElementById(`badge-box-${boxName}`);
+                if (badge) {
+                    badge.innerText = '0';
+                    badge.classList.remove('has-qty');
+                }
+            });
+            aggiornaStatoRuotaBox();
+            aggiornaPills();
+        }
+
+        function caricaPerModifica(index) {
+            editIndex = index;
+            const item = inventario[index];
+
+            selezionaPiano(item.piano);
+
+            const wIdx = struttureWall.indexOf(item.wall);
+            if (wIdx !== -1) {
+                wallAttivoIndex = wIdx;
+                document.getElementById('wallWheelList').scrollTo({ left: wIdx * 96, behavior: 'smooth' });
+                aggiornaStatoRuotaWall();
+            }
+
+            let primoIndiceTrovato = null;
+            listaBoxPiatta.forEach((boxName, idx) => {
+                const qty = item.dettaglio[boxName] || 0;
+                conteggiCorrenti[boxName] = qty;
+                
+                if (qty > 0 && primoIndiceTrovato === null) {
+                    primoIndiceTrovato = idx;
+                }
+
+                const badge = document.getElementById(`badge-box-${boxName}`);
+                if (badge) {
+                    badge.innerText = qty;
+                    badge.classList.toggle('has-qty', qty > 0);
+                }
+            });
+
+            if (primoIndiceTrovato !== null) {
+                boxAttivaIndex = primoIndiceTrovato;
+                document.getElementById('boxWheelList').scrollTo({ top: primoIndiceTrovato * 64, behavior: 'smooth' });
+            }
+
+            aggiornaStatoRuotaBox();
+            aggiornaPills();
+
+            const btnSalva = document.getElementById('btnSalva');
+            btnSalva.innerText = `Aggiorna Pallet #${index + 1}`;
+            btnSalva.classList.add('edit-mode');
+            document.getElementById('btnAnnulla').style.display = 'block';
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function annullaModifica() {
+            editIndex = null;
+            const btnSalva = document.getElementById('btnSalva');
+            btnSalva.innerText = "Salva Pallet in Inventario";
+            btnSalva.classList.remove('edit-mode');
+            document.getElementById('btnAnnulla').style.display = 'none';
+            resetConteggiForm();
+        }
+
+        function aggiornaTabella() {
+            const tbody = document.getElementById('inventoryBody');
+            tbody.innerHTML = '';
+            document.getElementById('totalPallets').innerText = inventario.length;
+
+            inventario.forEach((item, index) => {
+                let dettaglioStr = Object.entries(item.dettaglio)
+                    .map(([tipo, qty]) => `${tipo}: <b style="font-size: 1.1rem; color: var(--accent);">${qty}</b>`)
+                    .join(', ');
+
+                let badgeClass = 'badge-p2';
+                if (item.piano === 'P3') badgeClass = 'badge-p3';
+                if (item.piano === 'P4') badgeClass = 'badge-p4';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><span class="floor-badge ${badgeClass}">${item.piano}</span></td>
+                    <td class="cell-wall">${item.wall}</td>
+                    <td class="cell-detail">${dettaglioStr}</td>
+                    <td>
+                        <div class="btn-action-cell">
+                            <button class="btn-edit" onclick="caricaPerModifica(${index})">✏</button>
+                            <button class="btn-delete" onclick="chiediEliminaPallet(${index})">X</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function chiediEliminaPallet(index) {
+            mostraModale("Vuoi davvero eliminare questo pallet registrato?", () => {
+                if (editIndex === index) {
+                    annullaModifica();
+                }
+                inventario.splice(index, 1);
+                localStorage.setItem('non_inventory', JSON.stringify(inventario));
+                aggiornaTabella();
+            });
+        }
+
+        function chiediSvuotaTutto() {
+            mostraModale("Vuoi davvero cancellare tutto l'inventario attuale?", () => {
+                inventario = [];
+                localStorage.removeItem('non_inventory');
+                annullaModifica();
+                aggiornaTabella();
+            });
+        }
+
+        function applicaTema(tema) {
+            const btn = document.getElementById('themeBtn');
+            if (tema === 'light') {
+                document.body.classList.add('light-theme');
+                btn.innerHTML = '☀ Chiaro';
+            } else {
+                document.body.classList.remove('light-theme');
+                btn.innerHTML = '🌙 Scuro';
+            }
+        }
+
+        function toggleTema() {
+            const isLight = document.body.classList.contains('light-theme');
+            const nuovoTema = isLight ? 'dark' : 'light';
+            localStorage.setItem('non_inventory_theme', nuovoTema);
+            applicaTema(nuovoTema);
+        }
+
+        const temaSalvato = localStorage.getItem('non_inventory_theme') || 'dark';
+        applicaTema(temaSalvato);
+
+        inizializzaRuotaBox();
+        inizializzaRuotaWall();
+        aggiornaTabella();
+    </script>
+</body>
+</html>
